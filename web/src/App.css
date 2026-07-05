@@ -9,11 +9,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 12px;
 }
 
 h1 {
   font-size: 24px;
   margin: 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
 }
 
 .muted {
@@ -24,38 +28,49 @@ h1 {
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-top: 3px solid var(--accent);
+  border-radius: 4px;
   padding: 20px;
   margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
 input {
   font: inherit;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 3px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
 }
 
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 button {
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
   padding: 12px 16px;
-  border-radius: 8px;
-  border: none;
-  background: var(--accent);
+  border-radius: 3px;
+  border: 1px solid var(--accent-2);
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
   color: var(--accent-text);
   cursor: pointer;
 }
@@ -67,8 +82,10 @@ button:disabled {
 
 button.link {
   background: none;
+  border: none;
   color: var(--accent);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.4px;
   padding: 6px 0;
   text-decoration: underline;
 }

@@ -49,7 +49,7 @@ export default function App() {
 
   return (
     <div className="page">
-      <h1>Osusu Group</h1>
+      <h1>Rich People Osusu</h1>
       {view === "login" ? (
         <LoginView
           onLoggedIn={(res) => handleLoggedIn(res.token, res.member)}

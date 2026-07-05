@@ -55,7 +55,7 @@ export function HomeView({ token, member, onLogout }: Props) {
   return (
     <div className="page">
       <div className="header-row">
-        <h1>Osusu Group</h1>
+        <h1>Rich People Osusu</h1>
         <button className="link" onClick={onLogout}>
           Log out
         </button>
