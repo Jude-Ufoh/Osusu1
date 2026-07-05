@@ -17,6 +17,7 @@ export function HomeView({ token, member, onLogout }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showAssignment, setShowAssignment] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -77,8 +78,11 @@ export function HomeView({ token, member, onLogout }: Props) {
 
         {status?.stage === "waiting_for_umpire" && (
           <>
-            <h2>All 8 have registered</h2>
-            <p>Waiting for the umpire to assign contribution positions.</p>
+            <h2>Everybody has registered</h2>
+            <p>
+              {status.umpireName} has been selected as the umpire. Ask them to log in and run the
+              assignment.
+            </p>
           </>
         )}
 
@@ -87,22 +91,37 @@ export function HomeView({ token, member, onLogout }: Props) {
             <h2>You are the umpire</h2>
             <p>Tap below to randomly assign everyone's contribution position. This can only be done once.</p>
             <button onClick={handleAssign} disabled={assigning}>
-              {assigning ? "Assigning…" : "Run Assignment"}
+              {assigning ? "Assigning…" : "Assign"}
             </button>
           </>
         )}
 
         {status?.stage === "assigned" && status.positions && (
           <>
-            <h2>Contribution order</h2>
-            <ol className="positions">
-              {status.positions.map((p) => (
-                <li key={p.name}>{p.name}</li>
-              ))}
-            </ol>
+            <h2>Assignment complete</h2>
+            {!showAssignment ? (
+              <button onClick={() => setShowAssignment(true)}>View assignment</button>
+            ) : (
+              <ol className="positions">
+                {status.positions.map((p) => (
+                  <li key={p.name}>{p.name}</li>
+                ))}
+              </ol>
+            )}
           </>
         )}
       </div>
+
+      {status && status.registeredNames.length > 0 && (
+        <div className="card">
+          <h3>Registered members ({status.registeredNames.length}/{status.groupSize})</h3>
+          <ul className="roster">
+            {status.registeredNames.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {member.isAdmin && (
         <div className="admin-entry">

@@ -52,6 +52,8 @@ export interface StatusResponse {
   stage: Stage;
   registeredCount: number;
   groupSize: number;
+  registeredNames: string[];
+  umpireName?: string;
   positions?: Position[];
 }
 

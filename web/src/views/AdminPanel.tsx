@@ -28,9 +28,10 @@ export function AdminPanel({ token, onReset }: Props) {
 
   return (
     <div className="card admin-panel">
-      <h3>Reset cycle</h3>
+      <h3>Reset</h3>
       <p className="muted">
-        This clears everyone's registration and picks a new umpire once 8 people register again.
+        This clears everyone's registration and, once 8 people register again, picks a new umpire
+        (never Jude, and never the same person who was umpire last time).
       </p>
       <label>
         Admin password
@@ -43,7 +44,7 @@ export function AdminPanel({ token, onReset }: Props) {
       {error && <p className="error">{error}</p>}
       {!confirming ? (
         <button onClick={() => setConfirming(true)} disabled={!password}>
-          Reset everything
+          Reset
         </button>
       ) : (
         <div className="confirm-row">

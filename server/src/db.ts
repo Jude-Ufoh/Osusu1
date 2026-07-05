@@ -15,7 +15,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS group_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     umpire_member_id INTEGER,
-    assignment_done INTEGER NOT NULL DEFAULT 0
+    assignment_done INTEGER NOT NULL DEFAULT 0,
+    last_umpire_name TEXT
   );
 
   INSERT OR IGNORE INTO group_state (id, umpire_member_id, assignment_done)
@@ -34,6 +35,7 @@ export interface GroupState {
   id: number;
   umpire_member_id: number | null;
   assignment_done: number;
+  last_umpire_name: string | null;
 }
 
 export function getGroupState(): GroupState {

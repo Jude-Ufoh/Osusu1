@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { db, inTransaction, Member } from "../db";
-import { GROUP_SIZE } from "../config";
+import { db, getGroupState, inTransaction, Member } from "../db";
+import { ADMIN_NAME, GROUP_SIZE } from "../config";
 
 export const registerRouter = Router();
 
@@ -29,19 +29,25 @@ registerRouter.post("/register", async (req, res) => {
 
   const pinHash = await bcrypt.hash(pin, 10);
 
-  const { total, umpireSelected } = inTransaction(() => {
+  const { total, umpireName } = inTransaction(() => {
     db.prepare("INSERT INTO members (name, pin_hash) VALUES (?, ?)").run(name.trim(), pinHash);
 
     const members = db.prepare("SELECT * FROM members").all() as unknown as Member[];
-    let umpireSelected = false;
+    let umpireName: string | undefined;
 
     if (members.length === GROUP_SIZE) {
-      const chosen = members[Math.floor(Math.random() * members.length)];
+      const state = getGroupState();
+      const excludedNames = new Set(
+        [ADMIN_NAME, state.last_umpire_name?.toLowerCase()].filter(Boolean) as string[],
+      );
+      const eligible = members.filter((m) => !excludedNames.has(m.name.toLowerCase()));
+      const pool = eligible.length > 0 ? eligible : members.filter((m) => m.name.toLowerCase() !== ADMIN_NAME);
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
       db.prepare("UPDATE group_state SET umpire_member_id = ? WHERE id = 1").run(chosen.id);
-      umpireSelected = true;
+      umpireName = chosen.name;
     }
 
-    return { total: members.length, umpireSelected };
+    return { total: members.length, umpireName };
   });
 
   res.status(201).json({
@@ -49,9 +55,7 @@ registerRouter.post("/register", async (req, res) => {
     note:
       total < GROUP_SIZE
         ? "You will know your position when everyone has registered."
-        : umpireSelected
-          ? "All 8 members have registered. An umpire has been selected to assign positions."
-          : undefined,
+        : `Everybody has registered and ${umpireName} has been selected as the umpire. Ask them to log in and run the assignment.`,
     registeredCount: total,
     groupSize: GROUP_SIZE,
   });
