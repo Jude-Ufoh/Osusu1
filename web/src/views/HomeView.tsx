@@ -3,6 +3,7 @@ import * as api from "../api";
 import type { Member, StatusResponse } from "../api";
 import { ApiError } from "../api";
 import { AdminPanel } from "./AdminPanel";
+import { SwappablePositionsList } from "./SwappablePositionsList";
 
 interface Props {
   token: string;
@@ -102,11 +103,14 @@ export function HomeView({ token, member, onLogout }: Props) {
             {!showAssignment ? (
               <button onClick={() => setShowAssignment(true)}>View assignment</button>
             ) : (
-              <ol className="positions">
-                {status.positions.map((p) => (
-                  <li key={p.name}>{p.name}</li>
-                ))}
-              </ol>
+              <SwappablePositionsList
+                token={token}
+                positions={status.positions}
+                isUmpire={member.isUmpire}
+                onUpdate={(newPositions) =>
+                  setStatus((prev) => (prev ? { ...prev, positions: newPositions } : prev))
+                }
+              />
             )}
           </>
         )}

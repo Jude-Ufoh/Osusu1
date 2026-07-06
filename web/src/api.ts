@@ -81,6 +81,14 @@ export function getPositions(token: string) {
   return request<{ positions: Position[] }>("/positions", { token });
 }
 
+export function swapPositions(token: string, name1: string, name2: string) {
+  return request<{ positions: Position[] }>("/assign/swap", {
+    method: "POST",
+    token,
+    body: { name1, name2 },
+  });
+}
+
 export function adminReset(token: string, adminPassword: string) {
   return request<{ message: string }>("/admin/reset", {
     method: "POST",
