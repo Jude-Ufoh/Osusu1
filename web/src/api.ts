@@ -43,9 +43,12 @@ export interface RegisterResponse {
 
 export type Stage = "waiting_for_registrations" | "you_are_umpire" | "waiting_for_umpire" | "assigned";
 
+export type CollectionStatus = "waiting" | "next" | "collected";
+
 export interface Position {
   name: string;
   position: number;
+  collectionStatus?: CollectionStatus;
 }
 
 export interface StatusResponse {
@@ -79,6 +82,14 @@ export function runAssignment(token: string) {
 
 export function getPositions(token: string) {
   return request<{ positions: Position[] }>("/positions", { token });
+}
+
+export function setCollectionStatus(token: string, name: string, status: CollectionStatus) {
+  return request<{ positions: Position[] }>("/assign/collection-status", {
+    method: "POST",
+    token,
+    body: { name, status },
+  });
 }
 
 export function swapPositions(token: string, name1: string, name2: string) {

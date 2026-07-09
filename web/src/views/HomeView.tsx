@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "../api";
-import type { Member, StatusResponse } from "../api";
+import type { Member, Position, StatusResponse } from "../api";
 import { ApiError } from "../api";
 import { AdminPanel } from "./AdminPanel";
+import { AssignmentReveal } from "./AssignmentReveal";
 import { SwappablePositionsList } from "./SwappablePositionsList";
 
 interface Props {
@@ -19,6 +20,7 @@ export function HomeView({ token, member, onLogout }: Props) {
   const [assigning, setAssigning] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showAssignment, setShowAssignment] = useState(false);
+  const [revealPositions, setRevealPositions] = useState<Position[] | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -45,12 +47,19 @@ export function HomeView({ token, member, onLogout }: Props) {
     setError(null);
     try {
       const res = await api.runAssignment(token);
-      setStatus((prev) => (prev ? { ...prev, stage: "assigned", positions: res.positions } : prev));
+      setRevealPositions(res.positions);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setAssigning(false);
     }
+  }
+
+  function handleRevealDone() {
+    const pos = revealPositions!;
+    setRevealPositions(null);
+    setStatus((prev) => (prev ? { ...prev, stage: "assigned", positions: pos } : prev));
+    setShowAssignment(true);
   }
 
   return (
@@ -63,58 +72,67 @@ export function HomeView({ token, member, onLogout }: Props) {
       </div>
       <p className="muted">Welcome, {member.name}</p>
 
-      <div className="card">
-        {!status && !error && <p>Loading…</p>}
-        {error && <p className="error">{error}</p>}
+      {revealPositions ? (
+        <div className="card">
+          <AssignmentReveal positions={revealPositions} onDone={handleRevealDone} />
+        </div>
+      ) : (
+        <div className="card">
+          {!status && !error && <p>Loading…</p>}
+          {error && <p className="error">{error}</p>}
 
-        {status?.stage === "waiting_for_registrations" && (
-          <>
-            <h2>Waiting for everyone to register</h2>
-            <p>
-              {status.registeredCount} of {status.groupSize} registered
-            </p>
-            <p>You will know your position when everyone has registered.</p>
-          </>
-        )}
+          {status?.stage === "waiting_for_registrations" && (
+            <>
+              <h2>Waiting for everyone to register</h2>
+              <p>
+                {status.registeredCount} of {status.groupSize} registered
+              </p>
+              <p>You will know your position when everyone has registered.</p>
+            </>
+          )}
 
-        {status?.stage === "waiting_for_umpire" && (
-          <>
-            <h2>Everybody has registered</h2>
-            <p>
-              {status.umpireName} has been selected as the umpire. Ask them to log in and run the
-              assignment.
-            </p>
-          </>
-        )}
+          {status?.stage === "waiting_for_umpire" && (
+            <>
+              <h2>Everybody has registered</h2>
+              <p>
+                {status.umpireName} has been selected as the umpire. Ask them to log in and run the
+                assignment.
+              </p>
+            </>
+          )}
 
-        {status?.stage === "you_are_umpire" && (
-          <>
-            <h2>You are the umpire</h2>
-            <p>Tap below to randomly assign everyone's contribution position. This can only be done once.</p>
-            <button onClick={handleAssign} disabled={assigning}>
-              {assigning ? "Assigning…" : "Assign"}
-            </button>
-          </>
-        )}
+          {status?.stage === "you_are_umpire" && (
+            <>
+              <h2>You are the umpire</h2>
+              <p>
+                Tap below to randomly assign everyone's contribution position. This can only be done
+                once.
+              </p>
+              <button onClick={handleAssign} disabled={assigning}>
+                {assigning ? "Assigning…" : "Assign"}
+              </button>
+            </>
+          )}
 
-        {status?.stage === "assigned" && status.positions && (
-          <>
-            <h2>Assignment complete</h2>
-            {!showAssignment ? (
-              <button onClick={() => setShowAssignment(true)}>View assignment</button>
-            ) : (
-              <SwappablePositionsList
-                token={token}
-                positions={status.positions}
-                isUmpire={member.isUmpire}
-                onUpdate={(newPositions) =>
-                  setStatus((prev) => (prev ? { ...prev, positions: newPositions } : prev))
-                }
-              />
-            )}
-          </>
-        )}
-      </div>
+          {status?.stage === "assigned" && status.positions && (
+            <>
+              <h2>Assignment complete</h2>
+              {!showAssignment ? (
+                <button onClick={() => setShowAssignment(true)}>View assignment</button>
+              ) : (
+                <SwappablePositionsList
+                  token={token}
+                  positions={status.positions}
+                  isUmpire={member.isUmpire}
+                  onUpdate={(newPositions) =>
+                    setStatus((prev) => (prev ? { ...prev, positions: newPositions } : prev))
+                  }
+                />
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {status && status.registeredNames.length > 0 && (
         <div className="card">

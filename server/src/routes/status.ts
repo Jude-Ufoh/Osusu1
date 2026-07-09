@@ -40,7 +40,9 @@ statusRouter.get("/status", requireAuth, (req: AuthedRequest, res) => {
     });
   }
 
-  const positions = db.prepare("SELECT name, position FROM members ORDER BY position ASC").all();
+  const positions = db
+    .prepare("SELECT name, position, collection_status AS collectionStatus FROM members ORDER BY position ASC")
+    .all();
 
   res.json({
     stage: "assigned",

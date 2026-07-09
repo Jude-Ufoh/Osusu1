@@ -116,6 +116,101 @@ button.link {
   gap: 6px;
 }
 
+/* ---- reveal animation ---- */
+
+.reveal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reveal-title {
+  text-align: center;
+  margin: 0;
+}
+
+.reveal-list {
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reveal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+}
+
+.reveal-pos {
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 22px;
+  flex-shrink: 0;
+}
+
+.reveal-name {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.reveal-item.reveal-shown {
+  background: var(--card-bg);
+}
+
+.reveal-item.reveal-shown .reveal-name {
+  color: var(--text-h);
+}
+
+.reveal-item.reveal-new {
+  animation: reveal-flash 1.4s ease-out;
+}
+
+@keyframes reveal-flash {
+  0%, 25% {
+    background: var(--accent);
+  }
+  0%, 25% {
+    color: var(--accent-text);
+  }
+  100% {
+    background: var(--card-bg);
+    color: var(--text-h);
+  }
+}
+
+.reveal-item.reveal-current {
+  border-color: var(--accent);
+}
+
+.reveal-item.reveal-current .reveal-name {
+  color: var(--accent);
+  animation: blink 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes blink {
+  from { opacity: 0.3; }
+  to   { opacity: 1; }
+}
+
+.reveal-countdown {
+  text-align: center;
+}
+
+.reveal-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---- swap list ---- */
+
 .swap-hint {
   margin-bottom: 4px;
 }
@@ -169,6 +264,72 @@ button.link {
 .swap-item.swapping {
   cursor: wait;
   opacity: 0.7;
+}
+
+.readonly-item {
+  cursor: default;
+}
+
+.swap-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* ---- collection status ---- */
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+.status-badge.status-waiting {
+  background: var(--bg-2);
+  color: var(--muted);
+}
+
+.status-badge.status-next {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.status-badge.status-collected {
+  background: var(--success);
+  color: #fff;
+}
+
+.status-select {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.status-select[data-status="next"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.status-select[data-status="collected"] {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.status-select:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .admin-entry {

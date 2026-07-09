@@ -23,11 +23,18 @@ db.exec(`
   VALUES (1, NULL, 0);
 `);
 
+try {
+  db.exec("ALTER TABLE members ADD COLUMN collection_status TEXT NOT NULL DEFAULT 'waiting'");
+} catch {
+  // column already exists
+}
+
 export interface Member {
   id: number;
   name: string;
   pin_hash: string;
   position: number | null;
+  collection_status: string;
   created_at: string;
 }
 

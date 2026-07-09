@@ -5,6 +5,9 @@ import { GROUP_SIZE } from "../config";
 
 export const assignRouter = Router();
 
+const POSITIONS_QUERY =
+  "SELECT name, position, collection_status AS collectionStatus FROM members ORDER BY position ASC";
+
 function shuffledPositions(count: number): number[] {
   const positions = Array.from({ length: count }, (_, i) => i + 1);
   for (let i = positions.length - 1; i > 0; i--) {
@@ -38,7 +41,7 @@ assignRouter.post("/assign", requireAuth, (req: AuthedRequest, res) => {
       members.forEach((member, i) => assignPosition.run(shuffled[i], member.id));
       db.prepare("UPDATE group_state SET assignment_done = 1 WHERE id = 1").run();
     }
-    return db.prepare("SELECT name, position FROM members ORDER BY position ASC").all();
+    return db.prepare(POSITIONS_QUERY).all();
   });
 
   res.json({ positions });
@@ -75,7 +78,7 @@ assignRouter.post("/assign/swap", requireAuth, (req: AuthedRequest, res) => {
       db.prepare("UPDATE members SET position = ? WHERE id = ?").run(m2.position, m1.id);
       db.prepare("UPDATE members SET position = ? WHERE id = ?").run(m1.position, m2.id);
 
-      return db.prepare("SELECT name, position FROM members ORDER BY position ASC").all();
+      return db.prepare(POSITIONS_QUERY).all();
     });
 
     res.json({ positions });
@@ -83,4 +86,38 @@ assignRouter.post("/assign/swap", requireAuth, (req: AuthedRequest, res) => {
     const e = err as { status?: number; message?: string };
     res.status(e.status ?? 500).json({ error: e.message ?? "Swap failed." });
   }
+});
+
+assignRouter.post("/assign/collection-status", requireAuth, (req: AuthedRequest, res) => {
+  const me = req.member as Member;
+  const groupState = getGroupState();
+
+  if (groupState.umpire_member_id !== me.id) {
+    return res.status(403).json({ error: "Only the umpire can update collection status." });
+  }
+
+  if (!groupState.assignment_done) {
+    return res.status(409).json({ error: "Assignment has not been done yet." });
+  }
+
+  const { name, status } = req.body as { name?: string; status?: string };
+  const VALID = ["waiting", "next", "collected"];
+  if (!name || !status || !VALID.includes(status)) {
+    return res
+      .status(400)
+      .json({ error: "Provide a valid member name and status (waiting/next/collected)." });
+  }
+
+  const target = db
+    .prepare("SELECT id FROM members WHERE name = ? COLLATE NOCASE")
+    .get(name) as { id: number } | undefined;
+
+  if (!target) {
+    return res.status(404).json({ error: "Member not found." });
+  }
+
+  db.prepare("UPDATE members SET collection_status = ? WHERE id = ?").run(status, target.id);
+
+  const positions = db.prepare(POSITIONS_QUERY).all();
+  res.json({ positions });
 });
