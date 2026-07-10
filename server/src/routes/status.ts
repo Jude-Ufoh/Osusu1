@@ -1,16 +1,16 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../auth";
-import { db, getGroupState, Member } from "../db";
+import { runner, getGroupState, Member } from "../db";
 import { GROUP_SIZE } from "../config";
 
 export const statusRouter = Router();
 
-statusRouter.get("/status", requireAuth, (req: AuthedRequest, res) => {
+statusRouter.get("/status", requireAuth, async (req: AuthedRequest, res) => {
   const registeredNames = (
-    db.prepare("SELECT name FROM members ORDER BY id ASC").all() as unknown as { name: string }[]
+    await runner.all<{ name: string }>("SELECT name FROM members ORDER BY id ASC")
   ).map((r) => r.name);
   const registeredCount = registeredNames.length;
-  const groupState = getGroupState();
+  const groupState = await getGroupState();
   const me = req.member as Member;
 
   if (registeredCount < GROUP_SIZE) {
@@ -24,9 +24,9 @@ statusRouter.get("/status", requireAuth, (req: AuthedRequest, res) => {
 
   const umpireName = groupState.umpire_member_id
     ? (
-        db.prepare("SELECT name FROM members WHERE id = ?").get(groupState.umpire_member_id) as unknown as
-          | { name: string }
-          | undefined
+        await runner.get<{ name: string }>("SELECT name FROM members WHERE id = ?", [
+          groupState.umpire_member_id,
+        ])
       )?.name
     : undefined;
 
@@ -40,9 +40,9 @@ statusRouter.get("/status", requireAuth, (req: AuthedRequest, res) => {
     });
   }
 
-  const positions = db
-    .prepare("SELECT name, position, collection_status AS collectionStatus FROM members ORDER BY position ASC")
-    .all();
+  const positions = await runner.all(
+    "SELECT name, position, collection_status AS collectionStatus FROM members ORDER BY position ASC",
+  );
 
   res.json({
     stage: "assigned",

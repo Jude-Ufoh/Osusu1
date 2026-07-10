@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../auth";
-import { db, getGroupState, inTransaction, Member } from "../db";
+import { runner, getGroupState, inTransaction, Member } from "../db";
 import { GROUP_SIZE, ADMIN_NAME } from "../config";
 
 function canManageAssignment(me: Member, umpireMemberId: number | null): boolean {
@@ -21,13 +21,12 @@ function shuffledPositions(count: number): number[] {
   return positions;
 }
 
-assignRouter.post("/assign", requireAuth, (req: AuthedRequest, res) => {
+assignRouter.post("/assign", requireAuth, async (req: AuthedRequest, res) => {
   const me = req.member as Member;
-  const groupState = getGroupState();
+  const groupState = await getGroupState();
 
-  const registeredCount = (
-    db.prepare("SELECT COUNT(*) AS c FROM members").get() as unknown as { c: number }
-  ).c;
+  const countRow = await runner.get<{ c: number }>("SELECT COUNT(*) AS c FROM members");
+  const registeredCount = countRow?.c ?? 0;
   if (registeredCount < GROUP_SIZE) {
     return res.status(409).json({ error: "Not all 8 members have registered yet." });
   }
@@ -36,24 +35,25 @@ assignRouter.post("/assign", requireAuth, (req: AuthedRequest, res) => {
     return res.status(403).json({ error: "Only the umpire can run the assignment." });
   }
 
-  const positions = inTransaction(() => {
-    const state = getGroupState();
+  const positions = await inTransaction(async (t) => {
+    const state = await getGroupState(t);
     if (!state.assignment_done) {
-      const members = db.prepare("SELECT * FROM members").all() as unknown as Member[];
+      const members = await t.all<Member>("SELECT * FROM members");
       const shuffled = shuffledPositions(members.length);
-      const assignPosition = db.prepare("UPDATE members SET position = ? WHERE id = ?");
-      members.forEach((member, i) => assignPosition.run(shuffled[i], member.id));
-      db.prepare("UPDATE group_state SET assignment_done = 1 WHERE id = 1").run();
+      for (let i = 0; i < members.length; i++) {
+        await t.run("UPDATE members SET position = ? WHERE id = ?", [shuffled[i], members[i].id]);
+      }
+      await t.run("UPDATE group_state SET assignment_done = 1 WHERE id = 1");
     }
-    return db.prepare(POSITIONS_QUERY).all();
+    return t.all(POSITIONS_QUERY);
   });
 
   res.json({ positions });
 });
 
-assignRouter.post("/assign/swap", requireAuth, (req: AuthedRequest, res) => {
+assignRouter.post("/assign/swap", requireAuth, async (req: AuthedRequest, res) => {
   const me = req.member as Member;
-  const groupState = getGroupState();
+  const groupState = await getGroupState();
 
   if (!canManageAssignment(me, groupState.umpire_member_id)) {
     return res.status(403).json({ error: "Only the umpire or admin can swap positions." });
@@ -69,20 +69,22 @@ assignRouter.post("/assign/swap", requireAuth, (req: AuthedRequest, res) => {
   }
 
   try {
-    const positions = inTransaction(() => {
-      const m1 = db
-        .prepare("SELECT id, position FROM members WHERE name = ? COLLATE NOCASE")
-        .get(name1) as { id: number; position: number } | undefined;
-      const m2 = db
-        .prepare("SELECT id, position FROM members WHERE name = ? COLLATE NOCASE")
-        .get(name2) as { id: number; position: number } | undefined;
+    const positions = await inTransaction(async (t) => {
+      const m1 = await t.get<{ id: number; position: number }>(
+        "SELECT id, position FROM members WHERE name = ? COLLATE NOCASE",
+        [name1],
+      );
+      const m2 = await t.get<{ id: number; position: number }>(
+        "SELECT id, position FROM members WHERE name = ? COLLATE NOCASE",
+        [name2],
+      );
 
       if (!m1 || !m2) throw Object.assign(new Error("Member not found."), { status: 404 });
 
-      db.prepare("UPDATE members SET position = ? WHERE id = ?").run(m2.position, m1.id);
-      db.prepare("UPDATE members SET position = ? WHERE id = ?").run(m1.position, m2.id);
+      await t.run("UPDATE members SET position = ? WHERE id = ?", [m2.position, m1.id]);
+      await t.run("UPDATE members SET position = ? WHERE id = ?", [m1.position, m2.id]);
 
-      return db.prepare(POSITIONS_QUERY).all();
+      return t.all(POSITIONS_QUERY);
     });
 
     res.json({ positions });
@@ -92,9 +94,9 @@ assignRouter.post("/assign/swap", requireAuth, (req: AuthedRequest, res) => {
   }
 });
 
-assignRouter.post("/assign/collection-status", requireAuth, (req: AuthedRequest, res) => {
+assignRouter.post("/assign/collection-status", requireAuth, async (req: AuthedRequest, res) => {
   const me = req.member as Member;
-  const groupState = getGroupState();
+  const groupState = await getGroupState();
 
   if (!canManageAssignment(me, groupState.umpire_member_id)) {
     return res.status(403).json({ error: "Only the umpire or admin can update collection status." });
@@ -112,16 +114,17 @@ assignRouter.post("/assign/collection-status", requireAuth, (req: AuthedRequest,
       .json({ error: "Provide a valid member name and status (waiting/next/collected)." });
   }
 
-  const target = db
-    .prepare("SELECT id FROM members WHERE name = ? COLLATE NOCASE")
-    .get(name) as { id: number } | undefined;
+  const target = await runner.get<{ id: number }>(
+    "SELECT id FROM members WHERE name = ? COLLATE NOCASE",
+    [name],
+  );
 
   if (!target) {
     return res.status(404).json({ error: "Member not found." });
   }
 
-  db.prepare("UPDATE members SET collection_status = ? WHERE id = ?").run(status, target.id);
+  await runner.run("UPDATE members SET collection_status = ? WHERE id = ?", [status, target.id]);
 
-  const positions = db.prepare(POSITIONS_QUERY).all();
+  const positions = await runner.all(POSITIONS_QUERY);
   res.json({ positions });
 });

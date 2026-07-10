@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { initDb } from "./db";
 import { registerRouter } from "./routes/register";
 import { loginRouter } from "./routes/login";
 import { statusRouter } from "./routes/status";
@@ -24,6 +25,14 @@ app.use(positionsRouter);
 app.use(adminRouter);
 
 const port = Number(process.env.PORT ?? 4000);
-app.listen(port, () => {
-  console.log(`Osusu server listening on port ${port}`);
-});
+
+initDb()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`Osusu server listening on port ${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to initialize database:", err);
+    process.exit(1);
+  });

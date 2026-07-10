@@ -4,7 +4,8 @@ A small app to coordinate an 8-person osusu (rotating savings group): everyone r
 is randomly picked as umpire once all 8 have joined, and the umpire runs a single random draw that
 fixes everyone's contribution order. This app only tracks and coordinates — no money moves through it.
 
-- `server/` — Express + TypeScript API (SQLite storage via Node's built-in `node:sqlite`)
+- `server/` — Express + TypeScript API (SQLite dialect storage via `@libsql/client`; local file by
+  default, hosted Turso in production — see deploy step 2)
 - `web/` — React + TypeScript web app (Vite), meant to be shared as a link (e.g. over WhatsApp)
 
 ## Local development
@@ -33,7 +34,22 @@ git remote add origin <your-empty-github-repo-url>
 git push -u origin main
 ```
 
-### 2. Backend → Render
+### 2. Database → Turso (required for data to survive)
+Render's free plan has no persistent disk. It's not just redeploys that wipe local files — the
+free instance also **spins down after ~15 minutes of no traffic** and boots a fresh container on
+the next request, which wipes any local SQLite file too. For a group that registers sporadically
+over hours/days, that means registrations can vanish with no redeploy and no admin action at all.
+
+To make the cycle durable, point the server at a hosted [Turso](https://turso.tech) database
+(free tier, same SQLite dialect) instead of local disk:
+1. Sign up at turso.tech (or `npx @tursodatabase/cli auth login`).
+2. Create a database: `turso db create osusu`.
+3. Get the connection URL: `turso db show osusu --url`.
+4. Create an auth token: `turso db tokens create osusu`.
+You'll set both as environment variables on Render in the next step. If `TURSO_DATABASE_URL` is
+left unset, the server falls back to a local SQLite file — fine for local dev, not for production.
+
+### 3. Backend → Render
 1. Go to [render.com](https://render.com) and sign in with GitHub.
 2. New → Web Service → pick this repo. Render will detect `server/render.yaml` — use it, or set manually:
    - Root directory: `server`
@@ -42,26 +58,22 @@ git push -u origin main
 3. Set environment variables when prompted:
    - `ADMIN_PASSWORD` — the secret only Jude will use to reset the cycle
    - `JWT_SECRET` — Render can auto-generate this
-   - `CORS_ORIGIN` — leave as `*` for now; tighten it to your Vercel URL after step 3
+   - `CORS_ORIGIN` — leave as `*` for now; tighten it to your Vercel URL after step 4
+   - `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` — from step 2
 4. Deploy. Copy the resulting URL (e.g. `https://osusu-server.onrender.com`).
 
-**Note on data persistence:** the free Render plan's disk is wiped on every redeploy (not on normal
-restarts/sleep). That means member registrations reset if you push new server code. Fine for this
-group-coordination use case; if you need the cycle to survive redeploys long-term, move to a hosted
-database later.
-
-### 3. Frontend → Vercel
+### 4. Frontend → Vercel
 ```
 cd web
 npx vercel login
 npx vercel --prod
 ```
-When prompted, set the environment variable `VITE_API_URL` to your Render backend URL from step 2
+When prompted, set the environment variable `VITE_API_URL` to your Render backend URL from step 3
 (via `npx vercel env add VITE_API_URL production`, then redeploy with `npx vercel --prod`).
 
 Vercel will give you the shareable link — that's what you send in the WhatsApp group.
 
-### 4. Lock down CORS (optional but recommended)
+### 5. Lock down CORS (optional but recommended)
 Once you have the Vercel URL, go back to Render's environment variables and set `CORS_ORIGIN` to
 that exact URL, then redeploy the backend.
 

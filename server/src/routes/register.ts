@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { db, getGroupState, inTransaction, Member } from "../db";
+import { runner, getGroupState, inTransaction, Member } from "../db";
 import { ADMIN_NAME, GROUP_SIZE } from "../config";
 
 export const registerRouter = Router();
@@ -15,35 +15,34 @@ registerRouter.post("/register", async (req, res) => {
     return res.status(400).json({ error: "PIN must be exactly 4 digits." });
   }
 
-  const currentCount = (db.prepare("SELECT COUNT(*) AS c FROM members").get() as unknown as {
-    c: number;
-  }).c;
+  const countRow = await runner.get<{ c: number }>("SELECT COUNT(*) AS c FROM members");
+  const currentCount = countRow?.c ?? 0;
   if (currentCount >= GROUP_SIZE) {
     return res.status(409).json({ error: "All 8 spots are already registered." });
   }
 
-  const existing = db.prepare("SELECT id FROM members WHERE name = ?").get(name.trim());
+  const existing = await runner.get("SELECT id FROM members WHERE name = ?", [name.trim()]);
   if (existing) {
     return res.status(409).json({ error: "That name is already registered." });
   }
 
   const pinHash = await bcrypt.hash(pin, 10);
 
-  const { total, umpireName } = inTransaction(() => {
-    db.prepare("INSERT INTO members (name, pin_hash) VALUES (?, ?)").run(name.trim(), pinHash);
+  const { total, umpireName } = await inTransaction(async (t) => {
+    await t.run("INSERT INTO members (name, pin_hash) VALUES (?, ?)", [name.trim(), pinHash]);
 
-    const members = db.prepare("SELECT * FROM members").all() as unknown as Member[];
+    const members = await t.all<Member>("SELECT * FROM members");
     let umpireName: string | undefined;
 
     if (members.length === GROUP_SIZE) {
-      const state = getGroupState();
+      const state = await getGroupState(t);
       const excludedNames = new Set(
         [ADMIN_NAME, state.last_umpire_name?.toLowerCase()].filter(Boolean) as string[],
       );
       const eligible = members.filter((m) => !excludedNames.has(m.name.toLowerCase()));
       const pool = eligible.length > 0 ? eligible : members.filter((m) => m.name.toLowerCase() !== ADMIN_NAME);
       const chosen = pool[Math.floor(Math.random() * pool.length)];
-      db.prepare("UPDATE group_state SET umpire_member_id = ? WHERE id = 1").run(chosen.id);
+      await t.run("UPDATE group_state SET umpire_member_id = ? WHERE id = 1", [chosen.id]);
       umpireName = chosen.name;
     }
 
