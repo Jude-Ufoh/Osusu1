@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../auth";
 import { db, getGroupState, inTransaction, Member } from "../db";
-import { GROUP_SIZE } from "../config";
+import { GROUP_SIZE, ADMIN_NAME } from "../config";
+
+function canManageAssignment(me: Member, umpireMemberId: number | null): boolean {
+  return me.id === umpireMemberId || me.name.toLowerCase() === ADMIN_NAME;
+}
 
 export const assignRouter = Router();
 
@@ -51,8 +55,8 @@ assignRouter.post("/assign/swap", requireAuth, (req: AuthedRequest, res) => {
   const me = req.member as Member;
   const groupState = getGroupState();
 
-  if (groupState.umpire_member_id !== me.id) {
-    return res.status(403).json({ error: "Only the umpire can swap positions." });
+  if (!canManageAssignment(me, groupState.umpire_member_id)) {
+    return res.status(403).json({ error: "Only the umpire or admin can swap positions." });
   }
 
   if (!groupState.assignment_done) {
@@ -92,8 +96,8 @@ assignRouter.post("/assign/collection-status", requireAuth, (req: AuthedRequest,
   const me = req.member as Member;
   const groupState = getGroupState();
 
-  if (groupState.umpire_member_id !== me.id) {
-    return res.status(403).json({ error: "Only the umpire can update collection status." });
+  if (!canManageAssignment(me, groupState.umpire_member_id)) {
+    return res.status(403).json({ error: "Only the umpire or admin can update collection status." });
   }
 
   if (!groupState.assignment_done) {

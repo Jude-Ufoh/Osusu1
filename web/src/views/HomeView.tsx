@@ -123,7 +123,7 @@ export function HomeView({ token, member, onLogout }: Props) {
                 <SwappablePositionsList
                   token={token}
                   positions={status.positions}
-                  isUmpire={member.isUmpire}
+                  canEdit={member.isUmpire || member.isAdmin}
                   onUpdate={(newPositions) =>
                     setStatus((prev) => (prev ? { ...prev, positions: newPositions } : prev))
                   }

@@ -6,7 +6,7 @@ import { ApiError } from "../api";
 interface Props {
   token: string;
   positions: Position[];
-  isUmpire: boolean;
+  canEdit: boolean;
   onUpdate: (positions: Position[]) => void;
 }
 
@@ -16,7 +16,7 @@ const STATUS_LABEL: Record<CollectionStatus, string> = {
   collected: "Collected",
 };
 
-export function SwappablePositionsList({ token, positions, isUmpire, onUpdate }: Props) {
+export function SwappablePositionsList({ token, positions, canEdit, onUpdate }: Props) {
   const [draggingName, setDraggingName] = useState<string | null>(null);
   const [overName, setOverName] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
@@ -52,7 +52,7 @@ export function SwappablePositionsList({ token, positions, isUmpire, onUpdate }:
     }
   }
 
-  if (!isUmpire) {
+  if (!canEdit) {
     return (
       <ol className="swap-list">
         {positions.map((p) => {
